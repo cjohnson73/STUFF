@@ -18,24 +18,24 @@ public class Main
 	static GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
 	static KeyManager keyList = new KeyManager();
 	static double bssf = 0;
+	static int numSolves = 1000, numSteps = 20, tsize, w, h, best, sb, bestSin = 0, numSolvers = 40;
 	static int[] cubies = new int[48];
 	static int[] scramble = new int[50];
-	static double[] scores = new double[20];
-	static double[][][] solver = new double[20][48][20];//[0,1/7]
+	static double[] scores = new double[numSolvers];
+	static double[][][] solver = new double[numSolvers][cubies.length][20];//[0,1/7]
 	static boolean run = true;
 	static int[] solution = new int[20];
-	static int numSolves = 1000, tsize, w, h, best, sb, bestSin = 0;
 	final static String[] moves = {"0", "R", "R2", "R'", "0", "L", "L2", "L'", "0", "F", "F2", "F'", "0", "B", "B2", "B'", "0", "U", "U2", "U'", "0", "D", "D2", "D'"};
 	static Random rand = new Random(System.currentTimeMillis());
 	public static void main(String[] args)
 	{
 		init();
 		createDisplay();
-		for(int k = 0; k<20; k++)
+		for(int k = 0; k<numSolvers; k++)
 		{
-			for(int i = 0; i<20; i++)
+			for(int i = 0; i<numSteps; i++)
 			{
-				for(int j = 0; j<48; j++)
+				for(int j = 0; j<cubies.length; j++)
 				{
 					solver[k][j][i] = rand.nextDouble()/7;
 				}
@@ -45,16 +45,16 @@ public class Main
 		{
 			if(keyList.keyPressed(8))
 				run = false;
-			for(int k = 0; k<20; k++)
+			for(int k = 0; k<numSolvers; k++)
 			{
 				scores[k] = 0;
 			}
-			for(int k = 0; k<20; k++)
+			for(int k = 0; k<numSolvers; k++)
 			{
 				for(int m = 0; m<numSolves; m++)
 				{
 					cubies[0] = 1;
-					for(int i = 1; i<48; i++)
+					for(int i = 1; i<cubies.length; i++)
 						cubies[i] = i/8+1;
 					scrambler();
 					apply(scramble);
@@ -71,24 +71,30 @@ public class Main
 					//}
 					//System.out.println();
 					int score = test();
-					if(score>bestSin)
-						bestSin = score;
-					//System.out.println(score);
-					scores[k] += score-bscore;
+					if(score>bscore)
+					{
+						if(score>bestSin)
+							bestSin = score;
+						//System.out.println(score);
+						scores[k] += score;
+					}
 				}
 				scores[k] /=numSolves;
+				if(scores[k]>bssf)
+					bssf = scores[k];
 			}
 			adjust();
 			render();
 		}
-		for(int i = 0; i<20; i++)
+		for(int i = 0; i<numSteps; i++)
 		{
-			for(int j = 0; j<48; j++)
+			for(int j = 0; j<cubies.length; j++)
 			{
 				System.out.print(solver[0][j][i] + "\t");
 			}
 			System.out.println();
 		}
+		frame.dispose();
 	}
 	public static int test()
 	{
@@ -118,7 +124,7 @@ public class Main
 		for(int i = 0; i<solution.length; i++)
 		{
 			double temp = 0;
-			for(int j = 0; j<48; j++)
+			for(int j = 0; j<cubies.length; j++)
 			{
 				temp+=solver[k][j][i]*cubies[i];
 			}
@@ -142,31 +148,28 @@ public class Main
 			if(scores[k]>scores[sb] && k!=best)
 				sb = k;
 		}
-		if(scores[best]>bssf)
-			bssf = scores[best];
 		//generate rest of 18 solutions based off of the solver[best][][] and solver[sb][][]
-		for(int i = 0; i<20; i++)
+		for(int i = 0; i<numSteps; i++)
 		{
-			for(int j = 0; j<48; j++)
+			for(int j = 0; j<cubies.length; j++)
 			{
 				solver[0][j][i] = solver[best][j][i];
 				solver[1][j][i] = solver[sb][j][i];
 			}
 		}
-		for(int i = 2; i<20; i++)
+		for(int i = 2; i<numSolvers; i++)
 		{
-			for(int k = 0; k<20; k++)
+			for(int k = 0; k<numSteps; k++)
 			{
-				int m = rand.nextInt(3);
-				for(int j = 0; j<48; j++)
+				for(int j = 0; j<cubies.length; j++)
 				{
-					if(m!=2)
-						solver[i][j][k] = solver[m][j][k];
+					int m = rand.nextInt(101);
+					if(m!=50)
+						solver[i][j][k] = solver[m%2][j][k];
 					else
 						solver[i][j][k] = rand.nextDouble()/7;
 				}
 			}
-			
 		}
 	}
 	public static int let(int a)
@@ -179,7 +182,7 @@ public class Main
 		{
 			for(int j = 0; j<a[i]%4; j++)
 			{
-				if(let(a[i])==0)
+				if(let(a[i])==0)//R
 				{
 					swap(24,26,31,29);
 					swap(25,28,30,27);
@@ -187,7 +190,7 @@ public class Main
 					swap(20,4,35,44);
 					swap(47,23,7,32);
 				}
-				else if(let(a[i])==1)
+				else if(let(a[i])==1)//L
 				{
 					swap(8,10,15,13);
 					swap(9,12,14,11);
@@ -195,7 +198,7 @@ public class Main
 					swap(0,16,40,39);
 					swap(5,21,45,34);
 				}
-				else if(let(a[i])==2)
+				else if(let(a[i])==2)//F
 				{
 					swap(16,18,23,21);
 					swap(17,20,22,19);
@@ -203,7 +206,7 @@ public class Main
 					swap(6,27,41,12);
 					swap(7,29,40,10);
 				}
-				else if(let(a[i])==3)
+				else if(let(a[i])==3)//B
 				{
 					swap(32,34,39,37);
 					swap(33,36,38,35);
@@ -211,7 +214,7 @@ public class Main
 					swap(26,0,13,47);
 					swap(31,2,8,45);
 				}
-				else if(let(a[i])==4)
+				else if(let(a[i])==4)//U
 				{
 					swap(0,2,7,5);
 					swap(1,4,6,3);
@@ -219,7 +222,7 @@ public class Main
 					swap(16,8,32,24);
 					swap(18,10,34,26);
 				}
-				else if(let(a[i])==5)
+				else if(let(a[i])==5)//D
 				{
 					swap(40,42,47,45);
 					swap(41,44,46,43);
@@ -262,7 +265,7 @@ public class Main
 		//for(int i = 0; i<20; i++)
 		//{
 		//	String L = "";
-		//	for(int j = 0; j<48; j++)
+		//	for(int j = 0; j<cubies.length; j++)
 		//	{
 		//		L += ((10000*solver[0][j][i])-(10000*solver[0][j][i])%10)/10000 + "   \t\t   ";
 		//	}
