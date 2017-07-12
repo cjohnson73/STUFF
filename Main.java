@@ -18,14 +18,14 @@ public class Main
 	static GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
 	static KeyManager keyList = new KeyManager();
 	static double bssf = 0;
-	static int numSolves = 1000, numSteps = 20, tsize, w, h, best, sb, bestSin = 0, numSolvers = 40;
+	static int numSolves = 16, numSteps = 20, tsize, w, h, best, sb, bestSin = 0, numSolvers = 10;
 	static int[] cubies = new int[48];
 	static int[] scramble = new int[50];
 	static double[] scores = new double[numSolvers];
-	static double[][][] solver = new double[numSolvers][cubies.length][20];//[0,1/7]
+	static double[][][] solver = new double[numSolvers][cubies.length][numSteps];//[0,1/7]
 	static boolean run = true;
-	static int[] solution = new int[20];
-	final static String[] moves = {"0", "R", "R2", "R'", "0", "L", "L2", "L'", "0", "F", "F2", "F'", "0", "B", "B2", "B'", "0", "U", "U2", "U'", "0", "D", "D2", "D'"};
+	static int[] solution = new int[numSteps];
+	final static String[] moves = {"R", "R2", "R'", "L", "L2", "L'", "F", "F2", "F'", "B", "B2", "B'", "U", "U2", "U'", "D", "D2", "D'", "0"};
 	static Random rand = new Random(System.currentTimeMillis());
 	public static void main(String[] args)
 	{
@@ -33,14 +33,15 @@ public class Main
 		createDisplay();
 		for(int k = 0; k<numSolvers; k++)
 		{
-			for(int i = 0; i<numSteps; i++)
+			for(int i = 0; i<cubies.length; i++)
 			{
-				for(int j = 0; j<cubies.length; j++)
+				for(int j = 0; j<numSteps; j++)
 				{
-					solver[k][j][i] = rand.nextDouble()/7;
+					solver[k][i][j] = rand.nextDouble();
 				}
 			}
 		}
+		scrambler();
 		while(run)
 		{
 			if(keyList.keyPressed(8))
@@ -53,29 +54,27 @@ public class Main
 			{
 				for(int m = 0; m<numSolves; m++)
 				{
-					cubies[0] = 1;
-					for(int i = 1; i<cubies.length; i++)
-						cubies[i] = i/8+1;
+					for(int i = 0; i<cubies.length; i++)
+						cubies[i] = i;
 					scrambler();
 					apply(scramble);
 					int bscore = test();
 					solve(k);
 					apply(solution);
-					//for(int i = 0; i<scramble.length; i++)
-						//System.out.print(moves[scramble[i]] + " ");
-					//System.out.println();
-					//for(int i = 0; i<solution.length; i++)
-					//{
-						//if(solution[i]%4!=0)
-							//System.out.print(moves[solution[i]] + " ");
-					//}
-					//System.out.println();
+					for(int i = 0; i<scramble.length; i++)
+						System.out.print(moves[scramble[i]] + " ");
+					System.out.println();
+					for(int i = 0; i<solution.length; i++)
+					{
+						System.out.print(moves[solution[i]] + " ");
+					}
+					System.out.println();
 					int score = test();
 					if(score>bscore)
 					{
 						if(score>bestSin)
 							bestSin = score;
-						//System.out.println(score);
+						System.out.println(score);
 						scores[k] += score;
 					}
 				}
@@ -99,11 +98,9 @@ public class Main
 	public static int test()
 	{
 		int j = 0;
-		if(cubies[0]==1)
-			j++;
-		for(int i = 1; i<cubies.length; i++)
+		for(int i = 0; i<cubies.length; i++)
 		{
-			if(cubies[i]==i/8+1)
+			if(cubies[i]==i)
 				j++;
 		}
 		return j;
@@ -112,25 +109,21 @@ public class Main
 	{
 		for(int i = 0; i<scramble.length; i++)
 		{
-			scramble[i] = rand.nextInt(24);
-			if(scramble[i]%4==0)
-				scramble[i]+=rand.nextInt(3)+1;
-			if((i>0 && let(scramble[i])==let(scramble[i-1]))||(i>1 && let(scramble[i])==let(scramble[i-2]) && let(scramble[i-1])%6==(let(scramble[i])%2==0 ? let(scramble[i])+1: let(scramble[i])-1)%6))
+			scramble[i] = rand.nextInt(18);
+			if((i>0 && let(scramble[i])==let(scramble[i-1]))||(i>1 && let(scramble[i])==let(scramble[i-2]) && let(scramble[i-1]) == (let(scramble[i])%2==0 ? let(scramble[i])+1: let(scramble[i])-1)))
 				i--;
 		}
 	}
 	public static void solve(int k)
 	{
-		for(int i = 0; i<solution.length; i++)
+		for(int i = 0; i<numSteps; i++)
 		{
 			double temp = 0;
 			for(int j = 0; j<cubies.length; j++)
 			{
-				temp+=solver[k][j][i]*cubies[i];
+				temp+=solver[k][j][i]*cubies[j];
 			}
-			solution[i] = (int) Math.floor(temp);
-			if(solution[i]>23)
-				solution[i] = 23;
+			solution[i] = (int) temp%18;
 		}
 	}
 	public static void adjust()
@@ -149,38 +142,35 @@ public class Main
 				sb = k;
 		}
 		//generate rest of 18 solutions based off of the solver[best][][] and solver[sb][][]
-		for(int i = 0; i<numSteps; i++)
-		{
-			for(int j = 0; j<cubies.length; j++)
-			{
-				solver[0][j][i] = solver[best][j][i];
-				solver[1][j][i] = solver[sb][j][i];
-			}
-		}
-		for(int i = 2; i<numSolvers; i++)
+		for(int i = 0; i<numSolvers; i++)
 		{
 			for(int k = 0; k<numSteps; k++)
 			{
 				for(int j = 0; j<cubies.length; j++)
 				{
-					int m = rand.nextInt(101);
-					if(m!=50)
-						solver[i][j][k] = solver[m%2][j][k];
-					else
-						solver[i][j][k] = rand.nextDouble()/7;
+					if(i!=best && i!=sb)
+					{	
+						int m = rand.nextInt(21);
+						if(m%20==7)
+							solver[i][j][k] = rand.nextDouble();
+						else if(m%7==0 || m%5==0)
+							solver[i][j][k] = solver[sb][j][k];
+						else
+							solver[i][j][k] = solver[best][j][k];
+					}
 				}
 			}
 		}
 	}
 	public static int let(int a)
 	{
-		return((a-a%4)/4);
+		return((a-a%3)/3);
 	}
 	public static void apply(int[] a)
 	{
 		for(int i = 0; i<a.length; i++)
 		{
-			for(int j = 0; j<a[i]%4; j++)
+			for(int j = 0; j<a[i]%3+1; j++)
 			{
 				if(let(a[i])==0)//R
 				{
@@ -256,21 +246,12 @@ public class Main
 		g.fillRect(0,  0,  w,  h);
 		
 		g.setColor(Color.BLACK);
-		String S = "Best Sore: " + scores[best];
-		String T = "Best Sore So Far: " + bssf;
+		String S = "Best Avg in Round: " + scores[best];
+		String T = "Best Avg So Far: " + bssf;
 		String U = "Best Single: " + bestSin;
 		g.drawString(S, 0, tsize);
 		g.drawString(T, 0, 3*tsize);
 		g.drawString(U, 0, 5*tsize);
-		//for(int i = 0; i<20; i++)
-		//{
-		//	String L = "";
-		//	for(int j = 0; j<cubies.length; j++)
-		//	{
-		//		L += ((10000*solver[0][j][i])-(10000*solver[0][j][i])%10)/10000 + "   \t\t   ";
-		//	}
-		//	g.drawString(L, 0, tsize*i);
-		//}
 		bs.show();
 		g.dispose();
 	}
